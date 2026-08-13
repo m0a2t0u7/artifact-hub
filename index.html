@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>作業棚 — つくったものの一覧</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0E1117;
+  --panel:#151A22;
+  --panel2:#1B222C;
+  --line:#28313D;
+  --text:#E7EAEE;
+  --muted:#8C97A6;
+  --latte:#D8B98C;
+  --mint:#7FD1AE;
+  --rose:#E08C7D;
+  --shadow:0 1px 0 rgba(255,255,255,.03), 0 12px 32px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink);
+  color:var(--text);
+  font-family:"Zen Kaku Gothic New",-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+  font-size:15px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(216,185,140,.07), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, rgba(127,209,174,.05), transparent 60%);
+}
+.wrap{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:0 20px 80px}
+
+/* ---------- header ---------- */
+header{padding:56px 0 28px;border-bottom:1px solid var(--line)}
+.eyebrow{
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.22em;
+  color:var(--latte);text-transform:uppercase;margin:0 0 14px;
+}
+h1{
+  font-family:"Zen Old Mincho",serif;font-weight:700;
+  font-size:clamp(30px,5.4vw,46px);line-height:1.25;margin:0 0 10px;letter-spacing:.02em;
+}
+h1 .dot{color:var(--latte)}
+.lede{color:var(--muted);margin:0;max-width:52ch;font-size:14px}
+
+/* ---------- control bar ---------- */
+.bar{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  margin:22px 0 0;
+}
+.btn{
+  appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--text);
+  font-family:inherit;font-size:13px;font-weight:500;
+  padding:10px 16px;border-radius:10px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:8px;
+  transition:border-color .18s ease, background .18s ease, transform .12s ease;
+}
+.btn:hover{border-color:#3C4757;background:var(--panel2)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--latte);outline-offset:2px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn-sync{
+  border-color:rgba(216,185,140,.42);
+  background:linear-gradient(180deg,#241E15,#1A1710);
+  color:var(--latte);font-weight:700;letter-spacing:.04em;
+}
+.btn-sync:hover{border-color:var(--latte);background:linear-gradient(180deg,#2C2418,#201B12)}
+.btn-sync .ico{display:inline-block;transition:transform .6s cubic-bezier(.3,.8,.3,1)}
+.btn-sync.busy .ico{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.field{
+  flex:1 1 220px;min-width:180px;display:flex;align-items:center;gap:8px;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:0 12px;
+}
+.field input{
+  flex:1;background:none;border:0;color:var(--text);font-family:inherit;font-size:13px;
+  padding:10px 0;outline:none;min-width:0;
+}
+.field input::placeholder{color:#5E6979}
+.field span{color:#5E6979;font-family:"JetBrains Mono",monospace;font-size:12px}
+
+select.btn{padding-right:10px}
+
+/* ---------- status line ---------- */
+.status{
+  margin:14px 0 0;font-family:"JetBrains Mono",monospace;font-size:11.5px;
+  color:var(--muted);letter-spacing:.03em;display:flex;flex-wrap:wrap;gap:6px 14px;
+}
+.status b{color:var(--text);font-weight:500}
+.status .ok{color:var(--mint)}
+.status .warn{color:var(--rose)}
+
+/* ---------- chips ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:20px 0 0}
+.chip{
+  font-family:"JetBrains Mono",monospace;font-size:11.5px;
+  border:1px solid var(--line);background:transparent;color:var(--muted);
+  padding:5px 11px;border-radius:999px;cursor:pointer;transition:.16s;
+}
+.chip:hover{color:var(--text);border-color:#3C4757}
+.chip[aria-pressed="true"]{background:var(--latte);border-color:var(--latte);color:#15110B;font-weight:500}
+.chip:focus-visible{outline:2px solid var(--latte);outline-offset:2px}
+
+/* ---------- shelf / grid ---------- */
+.shelf{margin-top:34px}
+.shelf-head{
+  display:flex;align-items:baseline;gap:12px;
+  padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:22px;
+}
+.shelf-head h2{
+  font-family:"Zen Old Mincho",serif;font-size:17px;font-weight:700;margin:0;letter-spacing:.04em;
+}
+.shelf-head .n{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--muted)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px}
+
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  overflow:hidden;display:flex;flex-direction:column;
+  text-decoration:none;color:inherit;
+  box-shadow:var(--shadow);
+  transition:border-color .2s ease, transform .2s ease;
+}
+.card:hover{border-color:#44515F;transform:translateY(-3px)}
+.card:focus-visible{outline:2px solid var(--latte);outline-offset:3px}
+
+/* 標本ケース = プレビュー窓 */
+.case{
+  position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;
+  background:#fff;border-bottom:1px solid var(--line);
+}
+.case iframe{
+  position:absolute;top:0;left:0;width:1280px;height:800px;border:0;
+  transform-origin:top left;transform:scale(var(--s,.22));pointer-events:none;
+}
+.case .ph{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:repeating-linear-gradient(45deg,#141922,#141922 8px,#171D27 8px,#171D27 16px);
+  color:#4E5968;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.1em;
+}
+.case::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -30px 40px -30px rgba(0,0,0,.5);
+}
+
+.plate{padding:14px 16px 16px;display:flex;flex-direction:column;gap:7px;flex:1}
+.plate .t{
+  font-weight:700;font-size:14.5px;line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.plate .p{
+  font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--latte);
+  word-break:break-all;opacity:.85;
+}
+.plate .d{
+  font-size:12.5px;color:var(--muted);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.plate .meta{
+  margin-top:auto;padding-top:10px;border-top:1px solid var(--line);
+  font-family:"JetBrains Mono",monospace;font-size:10.5px;color:#67717F;
+  display:flex;justify-content:space-between;gap:8px;
+}
+
+/* ---------- states ---------- */
+.msg{
+  border:1px dashed var(--line);border-radius:14px;padding:36px 24px;text-align:center;
+  color:var(--muted);font-size:14px;
+}
+.msg strong{display:block;color:var(--text);font-size:16px;margin-bottom:8px;font-weight:700}
+.msg.err{border-color:rgba(224,140,125,.4)}
+.msg.err strong{color:var(--rose)}
+
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);
+  font-family:"JetBrains Mono",monospace;font-size:11px;color:#5E6979;
+  display:flex;flex-wrap:wrap;gap:8px 18px}
+
+.settings{
+  margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:12px;
+  background:var(--panel);display:none;gap:10px;flex-wrap:wrap;
+}
+.settings.open{display:flex}
+.settings label{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);
+  display:flex;flex-direction:column;gap:6px;flex:1 1 180px}
+.settings input{
+  background:var(--ink);border:1px solid var(--line);border-radius:8px;color:var(--text);
+  font-family:"JetBrains Mono",monospace;font-size:12.5px;padding:9px 11px;outline:none;
+}
+.settings input:focus{border-color:var(--latte)}
+.settings .row{flex:1 1 100%;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toggle{display:flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--muted);cursor:pointer}
+
+@media (max-width:640px){
+  header{padding:36px 0 22px}
+  .grid{grid-template-columns:1fr;gap:18px}
+  .wrap{padding:0 16px 60px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001s !important;transition-duration:.001s !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Artifact Shelf</p>
+    <h1>つくったものを、ぜんぶ棚に<span class="dot">。</span></h1>
+    <p class="lede">GitHub アカウント配下のリポジトリを自動で見つけて、公開中のアプリを並べます。同期を押すと最新の状態を取り直します。</p>
+
+    <div class="bar">
+      <button class="btn btn-sync" id="sync"><span class="ico">⟳</span><span id="syncLabel">同期する</span></button>
+      <div class="field">
+        <span>/</span>
+        <input id="q" type="search" placeholder="名前・説明で絞り込む" autocomplete="off">
+      </div>
+      <select class="btn" id="sort" aria-label="並び順">
+        <option value="updated">更新が新しい順</option>
+        <option value="name">名前順</option>
+        <option value="created">作った順（古い順）</option>
+      </select>
+      <button class="btn" id="gear" aria-expanded="false">設定</button>
+      <button class="btn" id="copy">一覧をコピー</button>
+    </div>
+
+    <div class="settings" id="settings">
+      <label>GitHub ユーザー名<input id="user" spellcheck="false"></label>
+      <label>除外リポジトリ（カンマ区切り）<input id="exclude" spellcheck="false" placeholder="test-repo, old-app"></label>
+      <div class="row">
+        <label class="toggle"><input type="checkbox" id="prev"> プレビューを表示する</label>
+        <label class="toggle"><input type="checkbox" id="onlyPages"> 公開中のものだけ表示する</label>
+        <button class="btn" id="save">保存して同期</button>
+      </div>
+    </div>
+
+    <p class="status" id="status"><span>まだ同期していません</span></p>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <main id="main"></main>
+
+  <footer>
+    <span id="foot">Artifact Shelf v2</span>
+    <span>データ元: GitHub REST API（未認証・60回/時）</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- localStorage 安全ラッパ ---------- */
+var SS = (function(){
+  var ok = false, mem = {};
+  try { window.localStorage.setItem("__t","1"); window.localStorage.removeItem("__t"); ok = true; } catch(e){ ok = false; }
+  return {
+    get: function(k){ try { return ok ? window.localStorage.getItem(k) : (mem[k] || null); } catch(e){ return mem[k] || null; } },
+    set: function(k,v){ try { if(ok){ window.localStorage.setItem(k,v); } else { mem[k] = v; } } catch(e){ mem[k] = v; } }
+  };
+})();
+
+var KEY = "artifact-shelf-v2";
+
+var cfg = {
+  user: "m0a2t0u7",
+  exclude: "",
+  preview: true,
+  onlyPages: false
+};
+
+var cache = { items: [], meta: {}, syncedAt: 0, rate: null };
+var state = { q: "", sort: "updated", filter: "", loading: false, error: null };
+
+/* ---------- utils ---------- */
+function $(id){ return document.getElementById(id); }
+
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+function fmtDate(iso){
+  if(!iso){ return "—"; }
+  var d = new Date(iso);
+  if(isNaN(d.getTime())){ return "—"; }
+  function p(x){ return x < 10 ? "0" + x : "" + x; }
+  return d.getFullYear() + "." + p(d.getMonth()+1) + "." + p(d.getDate());
+}
+
+function fmtTime(ms){
+  if(!ms){ return "—"; }
+  var d = new Date(ms);
+  function p(x){ return x < 10 ? "0" + x : "" + x; }
+  return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+function excludeList(){
+  return cfg.exclude.split(",").map(function(s){ return s.trim().toLowerCase(); }).filter(function(s){ return s.length > 0; });
+}
+
+function pagesURL(it){
+  if(it.homepage && /^https?:\/\//i.test(it.homepage)){ return it.homepage; }
+  return "https://" + cfg.user + ".github.io/" + it.name + "/";
+}
+
+/* ---------- 保存 / 復元 ---------- */
+function load(){
+  var raw = SS.get(KEY);
+  if(!raw){ return; }
+  try {
+    var o = JSON.parse(raw);
+    if(o && o.cfg){
+      for(var k in o.cfg){ if(Object.prototype.hasOwnProperty.call(o.cfg, k)){ cfg[k] = o.cfg[k]; } }
+    }
+    if(o && o.cache){ cache = o.cache; }
+    if(!cache.meta){ cache.meta = {}; }
+    if(!cache.items){ cache.items = []; }
+  } catch(e){ /* 壊れていたら初期値のまま */ }
+}
+
+function save(){
+  try { SS.set(KEY, JSON.stringify({ cfg: cfg, cache: cache })); } catch(e){}
+}
+
+/* ---------- GitHub 同期 ---------- */
+function fetchRepos(){
+  var url = "https://api.github.com/users/" + encodeURIComponent(cfg.user) +
+            "/repos?per_page=100&sort=updated";
+  return fetch(url, { headers: { "Accept": "application/vnd.github+json" } }).then(function(res){
+    var rem = res.headers.get("x-ratelimit-remaining");
+    if(rem !== null){ cache.rate = rem; }
+    if(res.status === 403){
+      throw new Error("GitHub の呼び出し上限（未認証60回/時）に達しました。しばらく待つと戻ります。");
+    }
+    if(res.status === 404){
+      throw new Error("ユーザー « " + cfg.user + " » が見つかりません。設定を確認してください。");
+    }
+    if(!res.ok){ throw new Error("GitHub からの応答が " + res.status + " でした。"); }
+    return res.json();
+  });
+}
+
+/* 先頭だけ読んで <title> を取る */
+function headText(url, maxBytes){
+  return fetch(url).then(function(res){
+    if(!res.ok){ throw new Error("" + res.status); }
+    if(!res.body || !res.body.getReader){ return res.text(); }
+    var reader = res.body.getReader();
+    var dec = new TextDecoder("utf-8");
+    var out = "", got = 0;
+    function step(){
+      if(got >= maxBytes){
+        try { reader.cancel(); } catch(e){}
+        return out;
+      }
+      return reader.read().then(function(r){
+        if(r.done){ return out; }
+        got += r.value.length;
+        out += dec.decode(r.value, { stream: true });
+        return step();
+      });
+    }
+    return step();
+  });
+}
+
+function extractMeta(html){
+  var t = null, d = null, m;
+  m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if(m){
+    t = m[1].replace(/\s+/g, " ").trim();
+    if(/^(document|untitled)$/i.test(t)){ t = null; }
+  }
+  m = html.match(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["']/i);
+  if(m){ d = m[1].trim(); }
+  return { title: t, desc: d };
+}
+
+function runPool(items, worker, limit){
+  return new Promise(function(resolve){
+    var i = 0, active = 0, done = 0;
+    if(items.length === 0){ resolve(); return; }
+    function next(){
+      while(active < limit && i < items.length){
+        var item = items[i]; i += 1; active += 1;
+        worker(item).catch(function(){}).then(function(){
+          active -= 1; done += 1;
+          if(done === items.length){ resolve(); } else { next(); }
+        });
+      }
+    }
+    next();
+  });
+}
+
+function sync(){
+  if(state.loading){ return; }
+  state.loading = true;
+  state.error = null;
+  $("sync").classList.add("busy");
+  $("syncLabel").textContent = "取得中…";
+  setStatus("<span>GitHub からリポジトリ一覧を取得しています…</span>");
+
+  fetchRepos().then(function(repos){
+    if(!repos || typeof repos.length !== "number"){
+      throw new Error("想定外の応答が返りました。");
+    }
+    var ex = excludeList();
+    var items = repos.filter(function(r){
+      if(r.fork){ return false; }
+      if(ex.indexOf(String(r.name).toLowerCase()) !== -1){ return false; }
+      return true;
+    }).map(function(r){
+      return {
+        name: r.name,
+        desc: r.description || "",
+        homepage: r.homepage || "",
+        branch: r.default_branch || "main",
+        hasPages: !!r.has_pages,
+        lang: r.language || "",
+        pushed: r.pushed_at || "",
+        created: r.created_at || "",
+        archived: !!r.archived
+      };
+    });
+
+    cache.items = items;
+    cache.syncedAt = Date.now();
+    render();
+
+    /* 変更のあったものだけ index.html の <title> を読み直す（raw は API 上限の対象外） */
+    var need = items.filter(function(it){
+      var c = cache.meta[it.name];
+      return !c || c.v !== it.pushed;
+    });
+    if(need.length === 0){ return null; }
+
+    var finished = 0;
+    setStatus("<span>タイトルを読み取り中… <b>0 / " + need.length + "</b></span>");
+
+    return runPool(need, function(it){
+      var raw = "https://raw.githubusercontent.com/" + cfg.user + "/" +
+                encodeURIComponent(it.name) + "/" + encodeURIComponent(it.branch) + "/index.html";
+      return headText(raw, 20000).then(function(html){
+        var m = extractMeta(html);
+        cache.meta[it.name] = { v: it.pushed, title: m.title, desc: m.desc, hasIndex: true };
+      }).catch(function(){
+        cache.meta[it.name] = { v: it.pushed, title: null, desc: null, hasIndex: false };
+      }).then(function(){
+        finished += 1;
+        setStatus("<span>タイトルを読み取り中… <b>" + finished + " / " + need.length + "</b></span>");
+      });
+    }, 4);
+  }).then(function(){
+    save();
+    render();
+  }).catch(function(err){
+    state.error = err.message || "取得に失敗しました。";
+    render();
+  }).then(function(){
+    state.loading = false;
+    $("sync").classList.remove("busy");
+    $("syncLabel").textContent = "同期する";
+  });
+}
+
+/* ---------- 表示ロジック ---------- */
+function isLive(it){
+  var m = cache.meta[it.name];
+  if(it.hasPages){ return true; }
+  return !!(m && m.hasIndex);
+}
+
+function displayTitle(it){
+  var m = cache.meta[it.name];
+  if(m && m.title){ return m.title; }
+  if(it.desc){ return it.desc; }
+  return it.name;
+}
+
+function displayDesc(it){
+  var m = cache.meta[it.name];
+  if(it.desc){ return it.desc; }
+  if(m && m.desc){ return m.desc; }
+  return "";
+}
+
+function setStatus(html){ $("status").innerHTML = html; }
+
+function statusHTML(){
+  var parts = [];
+  if(state.error){
+    parts.push('<span class="warn">⚠ ' + esc(state.error) + "</span>");
+  } else if(cache.syncedAt){
+    parts.push('<span class="ok">● 同期済み</span>');
+    parts.push("<span>最終同期 <b>" + fmtTime(cache.syncedAt) + "</b></span>");
+    parts.push("<span><b>" + cache.items.length + "</b> 件</span>");
+  } else {
+    parts.push("<span>まだ同期していません</span>");
+  }
+  if(cache.rate !== null && cache.rate !== undefined){
+    parts.push("<span>API残 <b>" + esc(cache.rate) + "</b></span>");
+  }
+  parts.push("<span>github.com/" + esc(cfg.user) + "</span>");
+  return parts.join("");
+}
+
+function visibleItems(){
+  var q = state.q.toLowerCase();
+  var list = cache.items.filter(function(it){
+    if(cfg.onlyPages && !isLive(it)){ return false; }
+    if(state.filter === "live" && !isLive(it)){ return false; }
+    if(state.filter === "dark" && isLive(it)){ return false; }
+    if(!q){ return true; }
+    var hay = (it.name + " " + displayTitle(it) + " " + displayDesc(it) + " " + it.lang).toLowerCase();
+    return hay.indexOf(q) !== -1;
+  });
+  list.sort(function(a, b){
+    if(state.sort === "name"){ return a.name.localeCompare(b.name, "ja"); }
+    if(state.sort === "created"){ return String(a.created).localeCompare(String(b.created)); }
+    return String(b.pushed).localeCompare(String(a.pushed));
+  });
+  return list;
+}
+
+function renderChips(){
+  var box = $("chips");
+  if(cache.items.length === 0){ box.innerHTML = ""; return; }
+  var live = 0;
+  cache.items.forEach(function(it){ if(isLive(it)){ live += 1; } });
+  var dark = cache.items.length - live;
+  var defs = [
+    { k: "", label: "すべて", n: cache.items.length },
+    { k: "live", label: "公開中", n: live },
+    { k: "dark", label: "未公開", n: dark }
+  ];
+  var html = "";
+  defs.forEach(function(d){
+    if(d.k === "dark" && dark === 0){ return; }
+    html += '<button class="chip" data-f="' + d.k + '" aria-pressed="' +
+            (state.filter === d.k ? "true" : "false") + '">' + esc(d.label) + " " + d.n + "</button>";
+  });
+  box.innerHTML = html;
+}
+
+function renderCards(list){
+  var html = "";
+  list.forEach(function(it){
+    var live = isLive(it);
+    var url = live ? pagesURL(it) : "https://github.com/" + cfg.user + "/" + it.name;
+    var desc = displayDesc(it);
+    var caseHTML = "";
+    if(cfg.preview){
+      caseHTML = live
+        ? '<div class="case" data-src="' + esc(pagesURL(it)) + '"><div class="ph">PREVIEW</div></div>'
+        : '<div class="case"><div class="ph">NO PAGES</div></div>';
+    }
+    html += '<a class="card" href="' + esc(url) + '" target="_blank" rel="noopener">' +
+      caseHTML +
+      '<div class="plate">' +
+        '<div class="t">' + esc(displayTitle(it)) + "</div>" +
+        '<div class="p">' + esc(it.name) + (live ? "" : "  ·  Pages未公開") + "</div>" +
+        (desc ? '<div class="d">' + esc(desc) + "</div>" : "") +
+        '<div class="meta"><span>' + esc(it.lang || "HTML") + "</span><span>更新 " + fmtDate(it.pushed) + "</span></div>" +
+      "</div></a>";
+  });
+  return html;
+}
+
+var io = null;
+function mountPreviews(){
+  if(!cfg.preview){ return; }
+  var boxes = document.querySelectorAll(".case[data-src]");
+  if(boxes.length === 0){ return; }
+
+  var w = boxes[0].clientWidth || 280;
+  document.documentElement.style.setProperty("--s", (w / 1280).toFixed(4));
+
+  if(io){ io.disconnect(); }
+  if(!("IntersectionObserver" in window)){ return; }
+  io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting){ return; }
+      var el = en.target;
+      io.unobserve(el);
+      var src = el.getAttribute("data-src");
+      if(!src){ return; }
+      var f = document.createElement("iframe");
+      f.setAttribute("loading", "lazy");
+      f.setAttribute("sandbox", "allow-scripts allow-same-origin");
+      f.setAttribute("scrolling", "no");
+      f.setAttribute("tabindex", "-1");
+      f.setAttribute("aria-hidden", "true");
+      f.src = src;
+      el.appendChild(f);
+      el.removeAttribute("data-src");
+    });
+  }, { rootMargin: "300px 0px" });
+
+  Array.prototype.forEach.call(boxes, function(b){ io.observe(b); });
+}
+
+function render(){
+  setStatus(statusHTML());
+  renderChips();
+
+  var main = $("main");
+
+  if(state.error && cache.items.length === 0){
+    main.innerHTML = '<div class="msg err"><strong>取得できませんでした</strong>' + esc(state.error) + "</div>";
+    return;
+  }
+  if(cache.items.length === 0){
+    main.innerHTML = '<div class="msg"><strong>棚はまだ空です</strong>「同期する」を押すと、GitHub からリポジトリを探してきて並べます。</div>';
+    return;
+  }
+
+  var list = visibleItems();
+  if(list.length === 0){
+    main.innerHTML = '<div class="msg"><strong>該当なし</strong>検索語や絞り込みを外してみてください。</div>';
+    return;
+  }
+
+  var heading = state.filter === "live" ? "公開中のアプリ" : (state.filter === "dark" ? "未公開のリポジトリ" : "つくったもの");
+  main.innerHTML = '<section class="shelf">' +
+    '<div class="shelf-head"><h2>' + esc(heading) + '</h2><span class="n">' + list.length + " 件</span></div>" +
+    '<div class="grid">' + renderCards(list) + "</div></section>";
+
+  mountPreviews();
+  $("foot").textContent = "Artifact Shelf v2 — " + cache.items.length + " 件を収蔵";
+}
+
+/* ---------- 一覧コピー（Markdown） ---------- */
+function copyList(){
+  var lines = visibleItems().map(function(it){
+    return "- [" + displayTitle(it) + "](" + (isLive(it) ? pagesURL(it) : "https://github.com/" + cfg.user + "/" + it.name) + ")";
+  });
+  var text = lines.join("\n");
+  var done = function(){
+    var el = $("copy");
+    var old = el.textContent;
+    el.textContent = "コピーしました";
+    setTimeout(function(){ el.textContent = old; }, 1600);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text, done); });
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+function fallbackCopy(text, done){
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); done(); } catch(e){}
+  document.body.removeChild(ta);
+}
+
+/* ---------- イベント ---------- */
+function bind(){
+  $("sync").addEventListener("click", function(){ sync(); });
+  $("q").addEventListener("input", function(e){ state.q = e.target.value; render(); });
+  $("sort").addEventListener("change", function(e){ state.sort = e.target.value; render(); });
+
+  $("chips").addEventListener("click", function(e){
+    var el = e.target && e.target.closest ? e.target.closest(".chip") : null;
+    if(!el){ return; }
+    state.filter = el.getAttribute("data-f") || "";
+    render();
+  });
+
+  $("gear").addEventListener("click", function(){
+    var open = $("settings").classList.toggle("open");
+    $("gear").setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  $("save").addEventListener("click", function(){
+    var u = $("user").value.trim();
+    if(u && u !== cfg.user){ cache.items = []; cache.meta = {}; }
+    cfg.user = u || cfg.user;
+    cfg.exclude = $("exclude").value;
+    cfg.preview = $("prev").checked;
+    cfg.onlyPages = $("onlyPages").checked;
+    state.filter = "";
+    save();
+    $("settings").classList.remove("open");
+    $("gear").setAttribute("aria-expanded", "false");
+    sync();
+  });
+
+  $("copy").addEventListener("click", copyList);
+
+  var t = null;
+  window.addEventListener("resize", function(){
+    if(t){ clearTimeout(t); }
+    t = setTimeout(function(){
+      var b = document.querySelector(".case");
+      if(b && b.clientWidth){
+        document.documentElement.style.setProperty("--s", (b.clientWidth / 1280).toFixed(4));
+      }
+    }, 200);
+  });
+}
+
+/* ---------- 起動 ---------- */
+function init(){
+  load();
+  $("user").value = cfg.user;
+  $("exclude").value = cfg.exclude;
+  $("prev").checked = cfg.preview;
+  $("onlyPages").checked = cfg.onlyPages;
+  $("sort").value = state.sort;
+  bind();
+  render();
+  if(cache.items.length === 0){ sync(); }
+}
+
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
