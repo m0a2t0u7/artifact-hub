@@ -40,7 +40,7 @@ body::before{
 .wrap{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:0 20px 80px}
 
 /* ---------- header ---------- */
-header{padding:56px 0 28px;border-bottom:1px solid var(--line)}
+header{padding:28px 0 20px;border-bottom:1px solid var(--line)}
 .eyebrow{
   font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.22em;
   color:var(--latte);text-transform:uppercase;margin:0 0 14px;
@@ -136,7 +136,7 @@ select.btn{padding-right:10px}
 
 /* 標本ケース = プレビュー窓 */
 .case{
-  position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;
+  position:relative;width:100%;aspect-ratio:16/8;overflow:hidden;
   background:#fff;border-bottom:1px solid var(--line);
 }
 .case iframe{
@@ -201,28 +201,30 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);
 .toggle{display:flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--muted);cursor:pointer}
 
 @media (max-width:640px){
-  header{padding:36px 0 22px}
-  .grid{grid-template-columns:1fr;gap:18px}
+  header{padding:20px 0 16px}
+  .grid{grid-template-columns:1fr;gap:12px}
   .wrap{padding:0 16px 60px}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001s !important;transition-duration:.001s !important}
 }
+.hub-nav{display:flex;gap:8px;overflow-x:auto;padding-bottom:16px;scrollbar-width:thin}.hub-nav a{flex:none;color:var(--text);text-decoration:none;font-size:12px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}.hub-nav a:hover{border-color:var(--latte)}.hub-nav a:focus-visible{outline:2px solid var(--latte);outline-offset:2px}.archived{color:var(--rose)}
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header>
+    <nav class="hub-nav" aria-label="制作物の棚"><a href="https://app-shelf-jp.kenm989199.chatgpt.site/">App Shelf</a><a href="https://m0a2t0u7-app-hub.kenm989199.chatgpt.site/">APP HUB</a><a href="https://latte-app-desk.kenm989199.chatgpt.site/">アプリ管理室</a><a href="https://prompt-gallery-jp.kenm989199.chatgpt.site/">Prompt Gallery</a><a href="https://business-tool-vault-2026.kenm989199.chatgpt.site/">ツール棚</a></nav>
     <p class="eyebrow">Artifact Shelf</p>
     <h1>つくったものを、ぜんぶ棚に<span class="dot">。</span></h1>
-    <p class="lede">GitHub アカウント配下のリポジトリを自動で見つけて、公開中のアプリを並べます。同期を押すと最新の状態を取り直します。</p>
+    <p class="lede">GitHub アカウント配下のリポジトリを自動で見つけて、リポジトリと公開アプリを並べます。同期を押すと最新の状態を取り直します。</p>
 
     <div class="bar">
       <button class="btn btn-sync" id="sync"><span class="ico">⟳</span><span id="syncLabel">同期する</span></button>
       <div class="field">
         <span>/</span>
-        <input id="q" type="search" placeholder="名前・説明で絞り込む" autocomplete="off">
+        <input id="q" aria-label="名前・説明で検索" type="search" placeholder="名前・説明で絞り込む" autocomplete="off">
       </div>
       <select class="btn" id="sort" aria-label="並び順">
         <option value="updated">更新が新しい順</option>
@@ -231,6 +233,7 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);
       </select>
       <button class="btn" id="gear" aria-expanded="false">設定</button>
       <button class="btn" id="copy">一覧をコピー</button>
+      <button class="btn" id="clear">絞り込み解除</button>
     </div>
 
     <div class="settings" id="settings">
@@ -247,10 +250,10 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);
     <div class="chips" id="chips"></div>
   </header>
 
-  <main id="main"></main>
+  <main id="main" aria-live="polite"></main>
 
   <footer>
-    <span id="foot">Artifact Shelf v2</span>
+    <span id="foot">Artifact Shelf v2.1.0</span>
     <span>データ元: GitHub REST API（未認証・60回/時）</span>
   </footer>
 </div>
@@ -273,7 +276,7 @@ var KEY = "artifact-shelf-v2";
 var cfg = {
   user: "m0a2t0u7",
   exclude: "",
-  preview: true,
+  preview: false,
   onlyPages: false
 };
 
@@ -310,7 +313,7 @@ function excludeList(){
 
 function pagesURL(it){
   if(it.homepage && /^https?:\/\//i.test(it.homepage)){ return it.homepage; }
-  return "https://" + cfg.user + ".github.io/" + it.name + "/";
+  return "https://" + encodeURIComponent(cfg.user) + ".github.io/" + encodeURIComponent(it.name) + "/";
 }
 
 /* ---------- 保存 / 復元 ---------- */
@@ -319,12 +322,19 @@ function load(){
   if(!raw){ return; }
   try {
     var o = JSON.parse(raw);
-    if(o && o.cfg){
-      for(var k in o.cfg){ if(Object.prototype.hasOwnProperty.call(o.cfg, k)){ cfg[k] = o.cfg[k]; } }
+    if(o && o.cfg && typeof o.cfg === "object"){
+      if(typeof o.cfg.user === "string" && /^[a-zA-Z0-9-]{1,39}$/.test(o.cfg.user)){ cfg.user = o.cfg.user; }
+      if(typeof o.cfg.exclude === "string"){ cfg.exclude = o.cfg.exclude; }
+      if(typeof o.cfg.preview === "boolean"){ cfg.preview = o.cfg.preview; }
+      if(typeof o.cfg.onlyPages === "boolean"){ cfg.onlyPages = o.cfg.onlyPages; }
     }
-    if(o && o.cache){ cache = o.cache; }
-    if(!cache.meta){ cache.meta = {}; }
-    if(!cache.items){ cache.items = []; }
+    if(o && o.cache && typeof o.cache === "object"){
+      var c = o.cache;
+      cache.items = Array.isArray(c.items) ? c.items.filter(function(it){ return it && typeof it.name === "string" && typeof it.desc === "string" && typeof it.homepage === "string" && typeof it.lang === "string"; }) : [];
+      cache.meta = c.meta && typeof c.meta === "object" && !Array.isArray(c.meta) ? c.meta : {};
+      cache.syncedAt = typeof c.syncedAt === "number" ? c.syncedAt : 0;
+      cache.rate = typeof c.rate === "string" || typeof c.rate === "number" ? c.rate : null;
+    }
   } catch(e){ /* 壊れていたら初期値のまま */ }
 }
 
@@ -334,20 +344,27 @@ function save(){
 
 /* ---------- GitHub 同期 ---------- */
 function fetchRepos(){
-  var url = "https://api.github.com/users/" + encodeURIComponent(cfg.user) +
-            "/repos?per_page=100&sort=updated";
-  return fetch(url, { headers: { "Accept": "application/vnd.github+json" } }).then(function(res){
-    var rem = res.headers.get("x-ratelimit-remaining");
-    if(rem !== null){ cache.rate = rem; }
-    if(res.status === 403){
-      throw new Error("GitHub の呼び出し上限（未認証60回/時）に達しました。しばらく待つと戻ります。");
-    }
-    if(res.status === 404){
-      throw new Error("ユーザー « " + cfg.user + " » が見つかりません。設定を確認してください。");
-    }
-    if(!res.ok){ throw new Error("GitHub からの応答が " + res.status + " でした。"); }
-    return res.json();
-  });
+  var items = [];
+  function page(number){
+    var url = "https://api.github.com/users/" + encodeURIComponent(cfg.user) +
+              "/repos?per_page=100&sort=updated&page=" + number;
+    return fetch(url, { headers: { "Accept": "application/vnd.github+json" } }).then(function(res){
+      var rem = res.headers.get("x-ratelimit-remaining");
+      if(rem !== null){ cache.rate = rem; }
+      if(res.status === 403 || res.status === 429){
+        throw new Error("GitHub の呼び出し上限に達した可能性があります。時間をおいて再同期してください。");
+      }
+      if(res.status === 404){ throw new Error("ユーザー « " + cfg.user + " » が見つかりません。設定を確認してください。"); }
+      if(!res.ok){ throw new Error("GitHub からの応答が " + res.status + " でした。"); }
+      var hasNext = /rel="next"/.test(res.headers.get("link") || "");
+      return res.json().then(function(data){
+        if(!Array.isArray(data)){ throw new Error("想定外の応答が返りました。"); }
+        items = items.concat(data);
+        return hasNext ? page(number + 1) : items;
+      });
+    });
+  }
+  return page(1);
 }
 
 /* 先頭だけ読んで <title> を取る */
@@ -476,9 +493,8 @@ function sync(){
 
 /* ---------- 表示ロジック ---------- */
 function isLive(it){
-  var m = cache.meta[it.name];
-  if(it.hasPages){ return true; }
-  return !!(m && m.hasIndex);
+  // HTMLの存在は公開の根拠にならない。GitHub Pagesか登録済みのWeb URLのみ。
+  return !!it.hasPages || /^https?:\/\//i.test(it.homepage || "");
 }
 
 function displayTitle(it){
@@ -541,8 +557,8 @@ function renderChips(){
   var dark = cache.items.length - live;
   var defs = [
     { k: "", label: "すべて", n: cache.items.length },
-    { k: "live", label: "公開中", n: live },
-    { k: "dark", label: "未公開", n: dark }
+    { k: "live", label: "公開URLあり", n: live },
+    { k: "dark", label: "公開URLなし", n: dark }
   ];
   var html = "";
   defs.forEach(function(d){
@@ -569,7 +585,7 @@ function renderCards(list){
       caseHTML +
       '<div class="plate">' +
         '<div class="t">' + esc(displayTitle(it)) + "</div>" +
-        '<div class="p">' + esc(it.name) + (live ? "" : "  ·  Pages未公開") + "</div>" +
+        '<div class="p">' + esc(it.name) + (live ? "" : "  ·  公開URLなし") + (it.archived ? "  ·  アーカイブ済み" : "") + "</div>" +
         (desc ? '<div class="d">' + esc(desc) + "</div>" : "") +
         '<div class="meta"><span>' + esc(it.lang || "HTML") + "</span><span>更新 " + fmtDate(it.pushed) + "</span></div>" +
       "</div></a>";
@@ -631,13 +647,13 @@ function render(){
     return;
   }
 
-  var heading = state.filter === "live" ? "公開中のアプリ" : (state.filter === "dark" ? "未公開のリポジトリ" : "つくったもの");
+  var heading = state.filter === "live" ? "公開URLのあるアプリ" : (state.filter === "dark" ? "公開URLのないリポジトリ" : "つくったもの");
   main.innerHTML = '<section class="shelf">' +
     '<div class="shelf-head"><h2>' + esc(heading) + '</h2><span class="n">' + list.length + " 件</span></div>" +
     '<div class="grid">' + renderCards(list) + "</div></section>";
 
   mountPreviews();
-  $("foot").textContent = "Artifact Shelf v2 — " + cache.items.length + " 件を収蔵";
+  $("foot").textContent = "Artifact Shelf v2.1.0 — " + cache.items.length + " 件を収蔵";
 }
 
 /* ---------- 一覧コピー（Markdown） ---------- */
@@ -673,6 +689,7 @@ function fallbackCopy(text, done){
 /* ---------- イベント ---------- */
 function bind(){
   $("sync").addEventListener("click", function(){ sync(); });
+  $("clear").addEventListener("click", function(){ state.q = ""; state.filter = ""; $("q").value = ""; render(); });
   $("q").addEventListener("input", function(e){ state.q = e.target.value; render(); });
   $("sort").addEventListener("change", function(e){ state.sort = e.target.value; render(); });
 
@@ -737,3 +754,4 @@ if(document.readyState === "loading"){
 </script>
 </body>
 </html>
+
